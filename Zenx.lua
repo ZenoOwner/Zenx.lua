@@ -1,26 +1,14 @@
--- =================== Zeno Hub Loader + Main Script ===================
+-- =================== Zeno Secure Loader ===================
 
--- CONFIG
-local SCRIPT_URL = "https://pastefy.app/LhS4IGdk/raw"  -- Main SAB script
-local KILL_URL   = "https://pastefy.app/HofMOKBF/raw"  -- Kill switch
-local KEY_URL    = "https://pastefy.app/gYEI9zmt/raw"  -- Key verification
+local SCRIPT_URL = "https://pastefy.app/YOUR_SCRIPT/raw"
+local VERIFY_URL = "https://pastefy.app/YOUR_KEYS/raw"
 
 local Players = game:GetService("Players")
 local lp = Players.LocalPlayer
 
--- =================== KILL SWITCH ===================
-pcall(function()
-    local killStatus = game:HttpGet(KILL_URL)
-    killStatus = killStatus:gsub("%s+", ""):upper()  -- make sure uppercase
-    if killStatus ~= "TRUE" then
-        -- Kick player immediately
-        lp:Kick("Zeno Hub Disabled by Owner")
-        return
-    end
-end)
-
 -- =================== GUI ===================
 local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+
 local Frame = Instance.new("Frame", ScreenGui)
 Frame.Size = UDim2.new(0, 260, 0, 140)
 Frame.Position = UDim2.new(0.5, -130, 0.5, -70)
@@ -57,17 +45,35 @@ Status.BackgroundTransparency = 1
 Status.Text = ""
 Status.TextScaled = true
 
--- =================== KEY SYSTEM ===================
+-- =================== KEY CHECK ===================
+local function isValidKey(userKey)
+    local success, data = pcall(function()
+        return game:HttpGet(VERIFY_URL)
+    end)
+
+    if not success then return false end
+
+    for key in string.gmatch(data, "[^\r\n]+") do
+        if key == userKey then
+            return true
+        end
+    end
+
+    return false
+end
+
 Btn.MouseButton1Click:Connect(function()
     local USER_KEY = Box.Text:gsub("%s+", "")
-    local requiredKey = game:HttpGet(KEY_URL):gsub("%s+", "")
-    
-    if USER_KEY ~= requiredKey then
+
+    if not isValidKey(USER_KEY) then
         Status.Text = "❌ Invalid Key"
         return
     end
 
     Status.Text = "✅ Loading..."
+
+    -- 🔐 pass key to main script
+    getgenv().ZENO_KEY = USER_KEY
 
     local success, err = pcall(function()
         loadstring(game:HttpGet(SCRIPT_URL))()
